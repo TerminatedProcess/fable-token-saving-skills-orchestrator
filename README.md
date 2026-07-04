@@ -1,22 +1,51 @@
 # 🧚 Fable Token-Saving Skills Orchestrator
 
+![Abstract dark developer orchestration banner with a central Fable light, routing lanes, cache signals, and side-worker nodes](assets/readme/hero.png)
+
+[![CI](https://github.com/100yenadmin/fable-token-saving-skills-orchestrator/actions/workflows/ci.yml/badge.svg)](https://github.com/100yenadmin/fable-token-saving-skills-orchestrator/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![CLAUDE.md additive](https://img.shields.io/badge/CLAUDE.md-additive-7c3aed)
+![Installer dry-run first](https://img.shields.io/badge/installer-dry--run%20first-0f766e)
+![Public-safe templates](https://img.shields.io/badge/templates-public--safe-f59e0b)
+
 Fable is excellent at judgment: strategy, architecture, decomposition, review,
 and synthesis. It is also expensive enough that letting it type every routine
 line of code, reread giant logs, or wake from a cold prompt every few minutes is
 usually the wrong shape.
 
-This repo packages the practices we have found useful so far:
+This repo packages the practices we have found useful so far into an additive
+kit for Claude Code style setups. It gives you a `CLAUDE.md` addendum, hooks,
+skills, and docs you can layer onto your existing configuration without
+replacing it. It is additive, not a replacement.
 
-- an additive `CLAUDE.md` addendum, not a replacement for your current file
-- Stop hooks that catch common long-running-agent failure modes
-- a safe dry-run installer for Claude Code style config
-- Fable-first routing tables for using cheaper lanes without losing judgment
-- docs explaining dense turns, wait discipline, prompt-cache economics, and
-  run-economics tradeoffs
+| What You Get | Purpose |
+| --- | --- |
+| Additive `CLAUDE.md` block | Fable-first orchestration, dense turns, routing, and wait discipline |
+| Stop hooks | Fail-open guards for common long-running-agent stop mistakes |
+| Skill templates | Reusable routing, Codex dispatch, and run-economics workflows |
+| Dry-run installer | Safe setup that does nothing unless `--apply` is present |
+| Public docs | Cache economics, lane routing, troubleshooting, and model-name adaptation |
+| Focused tests | Installer, hooks, and docs-safety checks for public reuse |
 
 The point is not "never use Fable." The point is to use Fable where it is
-uniquely valuable, then route mechanical work, large-output digestion,
-parallel verification, and long-running side lanes elsewhere.
+uniquely valuable, then route mechanical work, large-output digestion, parallel
+verification, and long-running side lanes elsewhere.
+
+```mermaid
+flowchart LR
+    fable["Fable<br/>judge, spec, synthesize"]
+    packet["Dispatch packet<br/>bounded work"]
+    lanes["Cheaper lanes<br/>implement, test, digest"]
+    proof["Bounded digest<br/>and proof"]
+    review["Fable review<br/>accept or reroute"]
+    wait{"Waiting?"}
+    keepalive["Short wait<br/>self-extinguishing keepalive"]
+    cold["Long idle<br/>let cache die once"]
+
+    fable --> packet --> lanes --> proof --> review --> wait
+    wait -->|under cache horizon| keepalive --> review
+    wait -->|long idle window| cold
+```
 
 ## Quick Start
 
