@@ -68,6 +68,25 @@ class KeepaliveHookTests(unittest.TestCase):
             self.assertEqual(payload["decision"], "block")
             self.assertIn("sleep-tick", payload["reason"])
 
+    def test_allows_when_stop_hook_active_even_if_tick_is_stale(self) -> None:
+        # Loop-breaker: a second stop that already carries stop_hook_active must
+        # be allowed through, even with a stale tick, so the guard cannot wedge
+        # the session when the agent does not arm a tick.
+        with tempfile.TemporaryDirectory() as tmp:
+            sentinel = Path(tmp) / "sentinel"
+            tick = Path(tmp) / "tick"
+            sentinel.touch()
+            tick.touch()
+            old = time.time() - 1000
+            os.utime(tick, (old, old))
+            result = self.run_hook({
+                "FTSO_KEEPALIVE_SENTINEL": str(sentinel),
+                "FTSO_LAST_TICK": str(tick),
+                "FTSO_STALE_AFTER_SECONDS": "200",
+            }, stdin=json.dumps({"stop_hook_active": True}))
+            self.assertEqual(result.returncode, 0)
+            self.assertEqual(result.stdout, "")
+
     def test_invalid_json_input_fails_open_without_sentinel(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             result = self.run_hook({

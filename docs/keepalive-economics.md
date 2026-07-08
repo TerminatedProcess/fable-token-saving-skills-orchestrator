@@ -16,6 +16,29 @@ If a lane is likely to return soon, a short keepalive can be cheaper than
 letting a large Fable context go cold. If the wait is genuinely long, let the
 cache die once.
 
+## Where The Break-Even Is
+
+Make the rule of thumb concrete. Let `C` be the cached context size in tokens.
+Letting the cache die and rewriting it later costs one write at `1.25x * C`. A
+keepalive instead pays one cache read at `0.1x * C` every tick for the whole
+wait. With the default 250s tick under the 5-minute lifetime, that is roughly
+`0.1x * C` every ~4 minutes.
+
+So `N` ticks cost `0.1x * C * N` versus a single cold rewrite at `1.25x * C`.
+They break even at `N = 12.5` ticks — about **50 minutes** of waiting. Under
+that horizon the keepalive is cheaper; past it, a single cold rewrite wins, so
+let the cache die once.
+
+Two caveats this model ignores, both pushing the real break-even *earlier*:
+
+- Each wake does "one small status check" — real output tokens per tick on top
+  of the cache read.
+- If the context keeps growing while you wait, later reads cost more than
+  earlier ones.
+
+Treat ~50 minutes as an upper bound, not a target. Measure your own `C` and
+tick cadence before trusting the number.
+
 Use keepalives for:
 
 - short waits where no useful inline work remains

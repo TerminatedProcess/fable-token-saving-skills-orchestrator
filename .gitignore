@@ -16,3 +16,11 @@ build/
 !.env.example
 *.log
 tmp/
+
+# fork-cloned-project: local shell helpers, never commit
+.salias
+*_cookies.txt
+.envrc
+.venv/
+.vscode/
+.idea/

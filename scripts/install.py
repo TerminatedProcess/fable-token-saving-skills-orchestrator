@@ -64,20 +64,43 @@ def backup(path: Path) -> Path | None:
     return backup_path
 
 
-def copy_file(src: Path, dst: Path, apply: bool) -> None:
+def backup_into(path: Path, backup_root: Path) -> Path | None:
+    """Back up an existing file or directory into backup_root before it is
+    overwritten. Skill/hook backups go here (not a sibling of the original) so a
+    backed-up skill dir is never re-discovered as a duplicate skill."""
+    if not path.exists():
+        return None
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    backup_root.mkdir(parents=True, exist_ok=True)
+    dest = backup_root / f"{path.name}.bak-ftso-{stamp}"
+    if path.is_dir():
+        shutil.copytree(path, dest)
+    else:
+        shutil.copy2(path, dest)
+    return dest
+
+
+def copy_file(src: Path, dst: Path, apply: bool, backup_root: Path) -> None:
     log(f"{'copy' if apply else 'would copy'} {src.relative_to(ROOT)} -> {dst}")
     if apply:
         dst.parent.mkdir(parents=True, exist_ok=True)
+        if dst.exists():
+            bp = backup_into(dst, backup_root)
+            if bp:
+                log(f"backup {dst} -> {bp}")
         shutil.copy2(src, dst)
         if dst.suffix in {".py", ".sh"}:
             dst.chmod(0o755)
 
 
-def copy_tree(src: Path, dst: Path, apply: bool) -> None:
+def copy_tree(src: Path, dst: Path, apply: bool, backup_root: Path) -> None:
     log(f"{'sync' if apply else 'would sync'} {src.relative_to(ROOT)} -> {dst}")
     if not apply:
         return
     if dst.exists():
+        bp = backup_into(dst, backup_root)
+        if bp:
+            log(f"backup {dst} -> {bp}")
         shutil.rmtree(dst)
     dst.parent.mkdir(parents=True, exist_ok=True)
     shutil.copytree(src, dst)
@@ -160,16 +183,17 @@ def main() -> int:
         log("dry-run mode; pass --apply to write changes")
     claude_home = Path(args.claude_home).expanduser().resolve()
     actions = selected_actions(args)
+    backup_root = claude_home / "backups" / "ftso"
 
     installed_hook_paths = [claude_home / "hooks" / hook.name for hook in HOOKS]
     if "hooks" in actions:
         for src, dst in zip(HOOKS, installed_hook_paths):
-            copy_file(src, dst, apply)
+            copy_file(src, dst, apply, backup_root)
         register_hooks(claude_home / "settings.json", installed_hook_paths, apply)
 
     if "skills" in actions:
         for src in SKILL_DIRS:
-            copy_tree(src, claude_home / "skills" / src.name, apply)
+            copy_tree(src, claude_home / "skills" / src.name, apply, backup_root)
 
     if "addendum" in actions:
         append_addendum(claude_home / "CLAUDE.md", apply)

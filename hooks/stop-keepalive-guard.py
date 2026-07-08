@@ -42,9 +42,16 @@ def allow() -> int:
 def main() -> int:
     try:
         try:
-            json.load(sys.stdin)
+            payload = json.load(sys.stdin)
         except Exception:
-            pass
+            payload = {}
+
+        # Loop-breaker: if this Stop is already the result of a prior block from
+        # a stop hook, allow it through. Without this, an agent that cannot (or
+        # will not) arm a tick would be blocked on every stop attempt with no
+        # escape, wedging the session. Mirrors stop-autonomous-guard.
+        if isinstance(payload, dict) and payload.get("stop_hook_active"):
+            return allow()
 
         sentinel = Path(SENTINEL)
         if not sentinel.exists():

@@ -105,6 +105,41 @@ class InstallTests(unittest.TestCase):
             self.assertEqual(keepalive_count, 1)
             self.assertEqual(autonomous_count, 1)
 
+    def test_existing_skill_and_hook_are_backed_up_not_destroyed(self) -> None:
+        # A pre-existing skill dir or hook file the installer did not create
+        # must be backed up before it is replaced, not silently destroyed.
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "claude-home"
+            colliding_skill = SKILL_NAMES[0]
+            skill_dir = home / "skills" / colliding_skill
+            skill_dir.mkdir(parents=True)
+            (skill_dir / "SKILL.md").write_text("user's own skill", encoding="utf-8")
+            hooks_dir = home / "hooks"
+            hooks_dir.mkdir(parents=True)
+            (hooks_dir / "stop-keepalive-guard.py").write_text("user's own hook", encoding="utf-8")
+
+            result = self.run_install("--apply", "--claude-home", str(home))
+            self.assertEqual(result.returncode, 0, result.stderr)
+
+            backups = home / "backups" / "ftso"
+            skill_backups = list(backups.glob(f"{colliding_skill}.bak-ftso-*"))
+            self.assertEqual(len(skill_backups), 1)
+            self.assertEqual(
+                (skill_backups[0] / "SKILL.md").read_text(encoding="utf-8"),
+                "user's own skill",
+            )
+            hook_backups = list(backups.glob("stop-keepalive-guard.py.bak-ftso-*"))
+            self.assertEqual(len(hook_backups), 1)
+            self.assertEqual(
+                hook_backups[0].read_text(encoding="utf-8"),
+                "user's own hook",
+            )
+            # And the FTSO versions are now in place.
+            self.assertIn(
+                "keepalive",
+                (home / "hooks" / "stop-keepalive-guard.py").read_text(encoding="utf-8"),
+            )
+
     def test_partial_hook_install_does_not_append_addendum(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp) / "claude-home"
